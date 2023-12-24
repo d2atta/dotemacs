@@ -37,7 +37,7 @@
              '("melpa" . "http://melpa.org/packages/"))
 
 ;; Path to custom modules (mandatory)
-(dolist (path '("lisp" "nano"))
+(dolist (path '("lisp"))
   (add-to-list 'load-path (locate-user-emacs-file path)))
 
 (package-refresh-contents t) ; refresh async
@@ -52,23 +52,17 @@
   (general-evil-setup t) ; I us eVIl
   )
 
-;; N A N O Modules
-(require 'nano-layout) ; unique layout
-(require 'nano-modeline) ; modeline + headerline
-(require 'nano-agenda)	; agenda mode for ORG
-(require 'nano-writer) ; writer mode for ORG
-
-;; (require 'nano-faces) ; faces
-;; (require 'nano-theme)
-;; (require 'nano-theme-light)
-;; (require 'nano-theme-dark)		
-;; (nano-theme-set-light) ; for setting light/dark theme
-;; (call-interactively 'nano-refresh-theme) ; Refresh after setting
-
 ;; Faces
 (set-face-attribute 'default nil :family "Fira Code" :height 130)
 (set-face-attribute 'italic nil :family "Hack")
 (set-face-attribute 'bold nil :weight 'semibold)
+;; Glyphs
+(defface fallback '((t :family "Fira Code"
+                       :inherit 'nano-face-faded)) "Fallback")
+(set-display-table-slot standard-display-table 'truncation
+                        (make-glyph-code ?… 'fallback))
+(set-display-table-slot standard-display-table 'wrap
+                         (make-glyph-code ?↩ 'fallback))
 
 ;; Theme
 (defun my-ef-themes-custom-faces ()
@@ -76,24 +70,45 @@
 This function is added to the `ef-themes-post-load-hook'."
   (ef-themes-with-colors
    (custom-set-faces
-    ;; header-line
-    `(header-line ((,c :inherit nil :background ,bg-mode-line :foreground ,fg-mode-line)))
-    ;; nano-headline
-    `(nano-face-header-default ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,modeline-info)))
-    `(nano-face-header-critical ((,c :inherit nano-face-header-default :background ,bg-yellow-subtle)))
-    `(nano-face-header-faded ((,c :inherit nano-face-header-default :background ,bg-blue-subtle)))
-    `(nano-face-header-popout ((,c :inherit nano-face-header-default :background ,bg-cyan-subtle)))
-    `(nano-face-header-strong ((,c :inherit bold :background ,bg-mode-line :foreground ,fg-mode-line)))
-    `(nano-face-header-salient ((,c :inherit bold :background ,bg-mode-line :foreground ,modeline-info)))
-    `(nano-face-header-highlight ((,c :inherit highlight :background ,bg-mode-line :foreground ,fg-mode-line)))
 
     ;; mode-line
-    `(mode-line ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-mode-line))))))
+    `(mode-line ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-mode-line)))
+    `(mode-line-inactive ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-alt)))
+
+    ;; nano-headline
+    `(nano-modeline-active ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,fg-mode-line)))
+    `(nano-modeline-primary ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,modeline-info)))
+    `(nano-faded-inactive ((,c :inherit nano-modeline-active :background ,bg-cyan-subtle :forground ,fg-dim)))
+    `(nano-modeline-status ((,c :inherit default :background ,bg-cyan-subtle :foreground ,fg-mode-line))))))
+
 (add-hook 'ef-themes-post-load-hook #'my-ef-themes-custom-faces)
 
 (use-package ef-themes
+  :custom
+  (ef-themes-mixed-fonts t)
+  (ef-themes-to-toggle '(ef-spring ef-night))
   :config
+  ;; Disable all other themes to avoid awkward blending:
+  (mapc #'disable-theme custom-enabled-themes)
   (ef-themes-select 'ef-spring))
+
+;; Layout
+(require 'disp-table)
+(setq default-frame-alist
+      (append (list
+	       '(min-height . 1)
+	       '(height     . 45)
+	       '(min-width  . 1)
+	       '(width      . 81)
+	       '(vertical-scroll-bars . nil)
+	       '(internal-border-width . 24)
+	       '(left-fringe    . 1)
+	       '(right-fringe   . 1)
+	       '(tool-bar-lines . 0)
+	       '(menu-bar-lines . 0))))
+(require 'nano-modeline)		; modeline + headerline
+;; Writer mode
+(require 'writer)			; writer mode for ORG
 
 (use-package server
   :ensure nil
@@ -119,10 +134,10 @@ This function is added to the `ef-themes-post-load-hook'."
   (dashboard-agenda-prefix-format "%?-10b" "agenda prefix")
   (dashboard-agenda-tags-format nil "Tag (no need)")
   :custom-face
-  ;; (dashboard-text-banner ((t (:inherit fg-intense))))
+  (dashboard-text-banner ((t (:inherit fg-alt :weight bold))))
+  (dashboard-banner-logo-title ((t (:inherit fg-dim :weight light :foreground "bg-main"))))
   ;; (dashboard-heading ((t (:inherit 'bold))))
   ;; (dashboard-items-face ((t (:inherit 'nano-face-default))))
-  ;; (dashboard-banner-logo-title ((t (:inherit fg-dim))))
   ;; (dashboard-no-items-face ((t (:inherit 'nano-face-faded))))
   ;; (dashboard-navigatir ((t (:inherit 'nano-face-faded))))
   :config
@@ -581,7 +596,11 @@ This function is added to the `ef-themes-post-load-hook'."
        "w w"   '(evil-window-next :which-key "Goto next window")
        ;; winner mode
        "w <left>"  '(winner-undo :which-key "Winner undo")
-       "w <right>" '(winner-redo :which-key "Winner redo"))
+       "w <right>" '(winner-redo :which-key "Winner redo")
+       ;; Theme toggle
+       "t t" '(ef-themes-toggle :which-key "Toggle Theme")
+       "g g" '(magit-status :which-key "Get Magit status")
+)
 
 ;; Good Key Bindings
 (bind-key "C-x k" #'kill-current-buffer)
