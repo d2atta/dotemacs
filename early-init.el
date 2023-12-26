@@ -27,7 +27,7 @@
 ;;  stupendous org-mode.
 ;;
 ;;  Make the changes in the corresponding
-;;  dotemacs.org file, instead.
+;;  Readme.org file, instead.
 ;;  -----------------------------------------
 
 ;;; Code:

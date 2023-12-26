@@ -26,7 +26,7 @@
 ;;  stupendous org-mode.
 ;;
 ;;  Make the changes in the corresponding
-;;  dotemacs.org file, instead.
+;;  Readme.org file, instead.
 ;;  -----------------------------------------
 
 ;;; Code:
@@ -69,24 +69,24 @@
   "My customizations on top of the Ef themes.
 This function is added to the `ef-themes-post-load-hook'."
   (ef-themes-with-colors
-   (custom-set-faces
+    (custom-set-faces
 
-    ;; mode-line
-    `(mode-line ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-mode-line)))
-    `(mode-line-inactive ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-alt)))
+     ;; mode-line
+     `(mode-line ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-mode-line)))
+     `(mode-line-inactive ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-main :underline ,bg-alt)))
 
-    ;; nano-headline
-    `(nano-modeline-active ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,fg-mode-line)))
-    `(nano-modeline-primary ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,modeline-info)))
-    `(nano-faded-inactive ((,c :inherit nano-modeline-active :background ,bg-cyan-subtle :forground ,fg-dim)))
-    `(nano-modeline-status ((,c :inherit default :background ,bg-cyan-subtle :foreground ,fg-mode-line))))))
+     ;; nano-headline
+     `(nano-modeline-active ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,fg-mode-line)))
+     `(nano-modeline-primary ((,c :inherit ef-themes-ui-variable-pitch :background ,bg-mode-line :foreground ,modeline-info)))
+     `(nano-faded-inactive ((,c :inherit nano-modeline-active :background ,bg-cyan-subtle :forground ,fg-dim)))
+     `(nano-modeline-status ((,c :inherit default :background ,bg-cyan-subtle :foreground ,fg-mode-line))))))
 
 (add-hook 'ef-themes-post-load-hook #'my-ef-themes-custom-faces)
 
 (use-package ef-themes
   :custom
   (ef-themes-mixed-fonts t)
-  (ef-themes-to-toggle '(ef-spring ef-night))
+  (ef-themes-to-toggle '(ef-spring ef-duo-dark))
   :config
   ;; Disable all other themes to avoid awkward blending:
   (mapc #'disable-theme custom-enabled-themes)
@@ -135,7 +135,7 @@ This function is added to the `ef-themes-post-load-hook'."
   (dashboard-agenda-tags-format nil "Tag (no need)")
   :custom-face
   (dashboard-text-banner ((t (:inherit fg-alt :weight bold))))
-  (dashboard-banner-logo-title ((t (:inherit fg-dim :weight light :foreground "bg-main"))))
+  (dashboard-banner-logo-title ((t (:inherit fg-dim :weight light))))
   ;; (dashboard-heading ((t (:inherit 'bold))))
   ;; (dashboard-items-face ((t (:inherit 'nano-face-default))))
   ;; (dashboard-no-items-face ((t (:inherit 'nano-face-faded))))
@@ -226,6 +226,7 @@ This function is added to the `ef-themes-post-load-hook'."
 
 ;; Marginilia
 (use-package marginalia
+  :after vertico
   :custom
   (marginalia-max-relative-age 0)
   (marginalia--ellipsis "…" "Nicer ellipsis")
@@ -311,6 +312,25 @@ This function is added to the `ef-themes-post-load-hook'."
 			    (";;;;;; " . 4)
 			    (";;;;;;; " . 5))))))
 
+(use-package flymake
+  :ensure nil
+  :hook
+  (TeX-mode . flymake-mode) ;; this is now working
+  (emacs-lisp-mode . flymake-mode)
+  :custom
+  (flymake-no-changes-timeout nil))
+
+(use-package flyspell
+  :custom
+  (ispell-program-name "aspell")
+  (ispell-choices-win-default-height 4)
+  :hook ((org-mode . flyspell-mode)
+	 (text-mode . flyspell-mode)
+	 (prog-mode . flyspell-prog-mode)))
+
+(use-package flyspell-correct
+  :bind ("C-;" . flyspell-correct-wrapper))
+
 ;; Treesitter
 (use-package treesit-auto
   :custom
@@ -393,6 +413,16 @@ This function is added to the `ef-themes-post-load-hook'."
   :config
   (conda-env-initialize-interactive-shells)
   (conda-env-autoactivate-mode t))
+
+(use-package format-all
+  :commands format-all-mode
+  :hook (prog-mode . format-all-mode)
+  :config
+  (setq-default format-all-formatters '(("Shell" (shfmt "-i" "4" "-ci"))
+					("Python" (black))
+					("C" (clang-format))
+					("C++" (clang-format))
+					("Lua" (stylua)))))
 
 ;; project
 (use-package project
@@ -582,30 +612,42 @@ This function is added to the `ef-themes-post-load-hook'."
 
 ;; Evil Window bindings
 (winner-mode 1)
+
+(defun my/org-dashboard ()
+  "Org Dashboard"
+  (interactive)
+  (org-agenda nil "d"))
+
 (nvmap :prefix "SPC"
-       ;; Window splits
-       "w c"   '(evil-window-delete :which-key "Close window")
-       "w n"   '(evil-window-new :which-key "New window")
-       "w s"   '(evil-window-split :which-key "Horizontal split window")
-       "w v"   '(evil-window-vsplit :which-key "Vertical split window")
-       ;; Window motions
-       "w h"   '(evil-window-left :which-key "Window left")
-       "w j"   '(evil-window-down :which-key "Window down")
-       "w k"   '(evil-window-up :which-key "Window up")
-       "w l"   '(evil-window-right :which-key "Window right")
-       "w w"   '(evil-window-next :which-key "Goto next window")
-       ;; winner mode
-       "w <left>"  '(winner-undo :which-key "Winner undo")
-       "w <right>" '(winner-redo :which-key "Winner redo")
-       ;; Theme toggle
-       "t t" '(ef-themes-toggle :which-key "Toggle Theme")
-       "g g" '(magit-status :which-key "Get Magit status")
-)
-
-;; Good Key Bindings
-(bind-key "C-x k" #'kill-current-buffer)
-(bind-key "C-c a" #'org-agenda)
-(bind-key "C-c c c" #'org-capture)
-(bind-key "C-c r" #'recentf)
-
+  ;; Window splits
+  "w c"   '(evil-window-delete :which-key "Close window")
+  "w n"   '(evil-window-new :which-key "New window")
+  "w s"   '(evil-window-split :which-key "Horizontal split window")
+  "w v"   '(evil-window-vsplit :which-key "Vertical split window")
+  ;; Window motions
+  "w h"   '(evil-window-left :which-key "Window left")
+  "w j"   '(evil-window-down :which-key "Window down")
+  "w k"   '(evil-window-up :which-key "Window up")
+  "w l"   '(evil-window-right :which-key "Window right")
+  "w w"   '(evil-window-next :which-key "Goto next window")
+  ;; winner mode
+  "w <left>"  '(winner-undo :which-key "Winner undo")
+  "w <right>" '(winner-redo :which-key "Winner redo")
+  ;; Theme toggle
+  "t t" '(ef-themes-toggle :which-key "Toggle Theme")
+  ;; Magit
+  "g g" '(magit-status :which-key "Get Magit status")
+  ;; Conda
+  "c a" '(conda-env-activate :which-key "Activate Conda env")
+  ;; Org
+  "o a" '(my/org-dashboard :whick-key "Org Agenda")
+  "o c" '(org-capture :whick-key "Org Capture")
+  ;; buffer
+  "b b"   '(ibuffer :which-key "Ibuffer")
+  "b c"   '(clone-indirect-buffer-other-window :which-key "Clone indirect buffer other window")
+  "b k"   '(kill-current-buffer :which-key "Kill current buffer")
+  "b n"   '(next-buffer :which-key "Next buffer")
+  "b p"   '(previous-buffer :which-key "Previous buffer")
+  ;; files
+  "f r" '(recentf :which-key "Recent files"))
 ;;; init.el ends here
