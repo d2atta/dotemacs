@@ -2,8 +2,11 @@
 #+author: Devildev
 #+date: 12/24
 #+description: My emacs custom configuration.
+:properties:
 #+property: header-args :tangle init.el
+#+startup: fold
 #+auto_tangle: t
+:end:
 
 * Preamble
 ** LICENSE
@@ -296,10 +299,7 @@ We are using emacs as server-client architecture. So, we run the server, if its 
 #+end_src
 
 ** Mini-buffer Completion
-+ =vertico=: Minibuffer completion engine
-+ =oderless=: Searching orderlessly
-+ =Marginilia=: Completion annotation
-
+*** =vertico=: Mini-buffer completion engine
 #+begin_src elisp
 ;; vertico
 (use-package vertico
@@ -320,13 +320,19 @@ We are using emacs as server-client architecture. So, we run the server, if its 
 		   "  ")
 		 cand)))
   )
+#+end_src
 
+*** =oderless=: Searching orderlessly
+#+begin_src elisp
 ;; orderless
 (use-package orderless
   :custom
   (completion-styles '(orderless basic) "Basic Styles")
   (completion-category-overrides '((file (styles basic partial-completion)))))
+#+end_src
 
+*** =Marginilia=: Completion annotation
+#+begin_src elisp
 ;; Marginilia
 (use-package marginalia
   :after vertico
@@ -352,7 +358,7 @@ Give the suggesion after a keypress
 ;;   (which-key-mode))
 #+end_src
 
-** Version Control
+** Version Control(~vc~)
 I use *Git* as my version control system.
 #+begin_src elisp
 (use-package vc
@@ -403,12 +409,17 @@ The the Directory Editor (=DirEd=)
   (dired-free-space nil) ; Emacs 29.1
   (dired-mouse-drag-files t) ; Emacs 29.1
   (dired-guess-shell-alist-user ; those are the suggestions for ! and & in Dired
-        '(("\\.\\(png\\|jpe?g\\|tiff\\)" "feh" "xdg-open")
-          ("\\.\\(mp[34]\\|m4a\\|ogg\\|flac\\|webm\\|mkv\\)" "mpv" "xdg-open")
-		  (".*" "xdg-open")))
-  :hook ((dired-mode-hook . dired-hide-details-mode)
-	 (dired-mode-hook . hl-line-mode)))
+   '(("\\.\\(png\\|jpe?g\\|tiff\\)" "feh" "xdg-open")
+     ("\\.\\(mp[34]\\|m4a\\|ogg\\|flac\\|webm\\|mkv\\)" "mpv" "xdg-open")
+     (".*" "xdg-open")))
+  :hook ((dired-mode . dired-hide-details-mode)
+	 (dired-mode . hl-line-mode))
+  :config
+  (with-eval-after-load 'dired
+    (define-key dired-mode-map (kbd "RET") 'dired-find-alternate-file)))
 
+;; open any compressed file
+(auto-compression-mode 1)
 #+end_src
 ** Outline
 Navigate elisp files easily. Outline is a built-in library and we can easily
@@ -477,7 +488,7 @@ To ease the downloading of the language grammers.
 The completion UI and backend are provided by the following packages.
 + =corfu= - For completion popup
 + =cape= - For different completion backends
-
+  
 #+begin_src elisp
 ;; corfu
 (use-package corfu
@@ -492,6 +503,7 @@ The completion UI and backend are provided by the following packages.
   (corfu-preselect 'prompt)      ; Preselect the prompt
   (corfu-on-exact-match nil)     ; Configure handling of exact matches
   (corfu-scroll-margin 5)        ; Use scroll margin
+  (corfu-popupinfo-delay 0)	 ; Documentation popup delay
 
   :bind
   ;; For Tab and Go
@@ -521,12 +533,21 @@ built-in to the emacs.
 ;; eglot
 (use-package eglot
   :ensure nil
+  :preface
+  (defun mp-eglot-eldoc ()
+    (setq eldoc-documentation-strategy
+	  'eldoc-documentation-compose-eagerly))
+  :hook ((eglot-managed-mode . mp-eglot-eldoc))
   ;; key-bindings
   :bind (("C-c l l" . eglot)
 	 ("C-c l a" . eglot-code-actions)
 	 ("C-c l r" . eglot-rename)
 	 ("C-c l f" . eglot-format))
   :custom
+  (add-to-list 'eglot-server-programs
+	       '(astro-mode . ("astro-ls" "--stdio"
+			       :initializationOptions
+			       (:typescript (:tsdk "./node_modules/typescript/lib")))))
   (eglot-autoshutdown t "Automatically shutdown")
   (eglot-events-buffer-size 0)
   (eglot-extend-to-xref nil)
@@ -543,7 +564,7 @@ built-in to the emacs.
 ;; Function to bundle backends
 (defun my/eglot-capf ()
   (setq-local completion-at-point-functions
-              (list (cape-super-capf
+              (list (cape-capf-super
                      #'eglot-completion-at-point
                      #'cape-file))))
 
@@ -685,12 +706,11 @@ The /in-famous/ org mode of Emacs.
                    (org-agenda-overriding-header "\nUpcoming deadlines (+14d)")))))))
   (org-capture-templates
    `(("t" "Tasks / Projects")
-     ("tw" "Task" entry (file+headline "~/proj/mtech/org/agenda.org" "WORK")
+     ("tw" "Work" entry (file+headline "~/proj/mtech/org/agenda.org" "WORK")
       "** TODO %^{task} :work:\nSCHEDULED: %^t\n%^{desc}%?\n" :empty-lines 1)
-     ("tp" "Task" entry (file+headline "~/proj/mtech/org/agenda.org" "PERS")
+     ("tp" "Personal" entry (file+headline "~/proj/mtech/org/agenda.org" "PERS")
       "** TODO %^{task} :per:\nSCHEDULED: %^t\n%^{desc}%?\n" :empty-lines 1)
      ))
-
                                         ; Export
   (org-src-fontify-natively t "Fontify code in code blocks")
   (org-adapt-indentation nil "Adaptive indentation")
@@ -699,6 +719,7 @@ The /in-famous/ org mode of Emacs.
   (org-edit-src-content-indentation 0 "No relative indentation for code blocks")
   (org-fontify-whole-block-delimiter-line t "Fontify whole block")
   :config
+  (setq-default org-startup-folded "fold") ; Intial visibility
   ;; save org buffers after refilling
   (advice-add 'org-refile :after 'org-save-all-org-buffers)
   )
@@ -851,6 +872,6 @@ Evil window movements & Personal keybindings, which are good to have.
   "b n"   '(next-buffer :which-key "Next buffer")
   "b p"   '(previous-buffer :which-key "Previous buffer")
   ;; files
-  "f r" '(recentf :which-key "Recent files"))
+  "f r" '(recentf :which-key "Recent files")
 ;;; init.el ends here
 #+end_src

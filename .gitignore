@@ -52,6 +52,9 @@ flycheck_*.el
 /transient/
 
 # custom
+bookmarks
 projects
 recentf
 nano/
+url/
+eln-cache/
