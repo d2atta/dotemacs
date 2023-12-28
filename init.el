@@ -284,11 +284,17 @@ This function is added to the `ef-themes-post-load-hook'."
   (dired-free-space nil) ; Emacs 29.1
   (dired-mouse-drag-files t) ; Emacs 29.1
   (dired-guess-shell-alist-user ; those are the suggestions for ! and & in Dired
-        '(("\\.\\(png\\|jpe?g\\|tiff\\)" "feh" "xdg-open")
-          ("\\.\\(mp[34]\\|m4a\\|ogg\\|flac\\|webm\\|mkv\\)" "mpv" "xdg-open")
-		  (".*" "xdg-open")))
-  :hook ((dired-mode-hook . dired-hide-details-mode)
-	 (dired-mode-hook . hl-line-mode)))
+   '(("\\.\\(png\\|jpe?g\\|tiff\\)" "feh" "xdg-open")
+     ("\\.\\(mp[34]\\|m4a\\|ogg\\|flac\\|webm\\|mkv\\)" "mpv" "xdg-open")
+     (".*" "xdg-open")))
+  :hook ((dired-mode . dired-hide-details-mode)
+	 (dired-mode . hl-line-mode))
+  :config
+  (with-eval-after-load 'dired
+    (define-key dired-mode-map (kbd "RET") 'dired-find-alternate-file)))
+
+;; open any compressed file
+(auto-compression-mode 1)
 
 ;; Outline
 (use-package outline
@@ -311,6 +317,23 @@ This function is added to the `ef-themes-post-load-hook'."
 			    (";;;;; " . 3)
 			    (";;;;;; " . 4)
 			    (";;;;;;; " . 5))))))
+
+(use-package imenu
+  :ensure nil
+  :custom
+  (imenu-use-markers t)
+  (imenu-auto-rescan t)
+  (imenu-auto-rescan-maxout 600000)
+  (imenu-max-item-length 100)
+  (imenu-use-popup-menu nil)
+  (imenu-eager-completion-buffer t)
+  (imenu-space-replacement " ")
+  (imenu-level-seperator "/"))
+
+(use-package flimenu
+  :after imenu
+  :config
+  (flimenu-global-mode 1))
 
 (use-package flymake
   :ensure nil
@@ -351,6 +374,7 @@ This function is added to the `ef-themes-post-load-hook'."
   (corfu-preselect 'prompt)      ; Preselect the prompt
   (corfu-on-exact-match nil)     ; Configure handling of exact matches
   (corfu-scroll-margin 5)        ; Use scroll margin
+  (corfu-popupinfo-delay 0)	 ; Documentation popup delay
 
   :bind
   ;; For Tab and Go
@@ -361,27 +385,56 @@ This function is added to the `ef-themes-post-load-hook'."
         ([backtab] . corfu-previous))
 
   ;; Enable Corfu only for certain modes.
-  :hook ((prog-mode . corfu-mode)
-         (shell-mode . corfu-mode)
-         (eshell-mode . corfu-mode)))
+  :hook((prog-mode . corfu-mode)
+	(prog-mode . corfu-popupinfo-mode)
+        (shell-mode . corfu-mode)
+        (eshell-mode . corfu-mode)))
+
+(use-package kind-icon
+  :after corfu
+  :custom
+  (kind-icon-default-face 'corfu-default)
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
 ;; cape
 (use-package cape
+  ;; Available: cape-file cape-dabbrev cape-history cape-keyword
+  ;; cape-tex cape-sgml cape-rfc1345 cape-abbrev cape-ispell
+  ;; cape-dict cape-symbol cape-line
   :defer t
   :init
   ;; Add `completion-at-point-functions', used by `completion-at-point'.
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   (add-to-list 'completion-at-point-functions #'cape-file))
 
+;; Web Mode
+(use-package web-mode)
+
+;; Astro.js mode
+(define-derived-mode astro-mode web-mode "astro")
+(setq auto-mode-alist
+      (append '((".*\\.astro\\'" . astro-mode))
+	      auto-mode-alist))
+
 ;; eglot
 (use-package eglot
   :ensure nil
+  :preface
+  (defun mp-eglot-eldoc ()
+    (setq eldoc-documentation-strategy
+	  'eldoc-documentation-compose-eagerly))
+  :hook ((eglot-managed-mode . mp-eglot-eldoc))
   ;; key-bindings
   :bind (("C-c l l" . eglot)
 	 ("C-c l a" . eglot-code-actions)
 	 ("C-c l r" . eglot-rename)
 	 ("C-c l f" . eglot-format))
   :custom
+  (add-to-list 'eglot-server-programs
+	       '(astro-mode . ("astro-ls" "--stdio"
+			       :initializationOptions
+			       (:typescript (:tsdk "./node_modules/typescript/lib")))))
   (eglot-autoshutdown t "Automatically shutdown")
   (eglot-events-buffer-size 0)
   (eglot-extend-to-xref nil)
@@ -398,7 +451,7 @@ This function is added to the `ef-themes-post-load-hook'."
 ;; Function to bundle backends
 (defun my/eglot-capf ()
   (setq-local completion-at-point-functions
-              (list (cape-super-capf
+              (list (cape-capf-super
                      #'eglot-completion-at-point
                      #'cape-file))))
 
@@ -510,12 +563,11 @@ This function is added to the `ef-themes-post-load-hook'."
                    (org-agenda-overriding-header "\nUpcoming deadlines (+14d)")))))))
   (org-capture-templates
    `(("t" "Tasks / Projects")
-     ("tw" "Task" entry (file+headline "~/proj/mtech/org/agenda.org" "WORK")
+     ("tw" "Work" entry (file+headline "~/proj/mtech/org/agenda.org" "WORK")
       "** TODO %^{task} :work:\nSCHEDULED: %^t\n%^{desc}%?\n" :empty-lines 1)
-     ("tp" "Task" entry (file+headline "~/proj/mtech/org/agenda.org" "PERS")
+     ("tp" "Personal" entry (file+headline "~/proj/mtech/org/agenda.org" "PERS")
       "** TODO %^{task} :per:\nSCHEDULED: %^t\n%^{desc}%?\n" :empty-lines 1)
      ))
-
                                         ; Export
   (org-src-fontify-natively t "Fontify code in code blocks")
   (org-adapt-indentation nil "Adaptive indentation")
@@ -524,6 +576,7 @@ This function is added to the `ef-themes-post-load-hook'."
   (org-edit-src-content-indentation 0 "No relative indentation for code blocks")
   (org-fontify-whole-block-delimiter-line t "Fontify whole block")
   :config
+  (setq-default org-startup-folded "fold") ; Intial visibility
   ;; save org buffers after refilling
   (advice-add 'org-refile :after 'org-save-all-org-buffers)
   )
@@ -649,5 +702,7 @@ This function is added to the `ef-themes-post-load-hook'."
   "b n"   '(next-buffer :which-key "Next buffer")
   "b p"   '(previous-buffer :which-key "Previous buffer")
   ;; files
-  "f r" '(recentf :which-key "Recent files"))
+  "f r" '(recentf :which-key "Recent files")
+  ;; imenu
+  "s i" '(imenu :which-key "Imenu"))
 ;;; init.el ends here

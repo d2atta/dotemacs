@@ -447,7 +447,26 @@ configure it to treat elisp comments as headings.
 			    (";;;;;; " . 4)
 			    (";;;;;;; " . 5))))))
 #+end_src
+** Imenu
+Quick traverse a file
+#+begin_src elisp
+(use-package imenu
+  :ensure nil
+  :custom
+  (imenu-use-markers t)
+  (imenu-auto-rescan t)
+  (imenu-auto-rescan-maxout 600000)
+  (imenu-max-item-length 100)
+  (imenu-use-popup-menu nil)
+  (imenu-eager-completion-buffer t)
+  (imenu-space-replacement " ")
+  (imenu-level-seperator "/"))
 
+(use-package flimenu
+  :after imenu
+  :config
+  (flimenu-global-mode 1))
+#+end_src
 ** Checker
 + Flymake: syntax checker
 + Flyspell: Spelling checker
@@ -514,22 +533,42 @@ The completion UI and backend are provided by the following packages.
         ([backtab] . corfu-previous))
 
   ;; Enable Corfu only for certain modes.
-  :hook ((prog-mode . corfu-mode)
-         (shell-mode . corfu-mode)
-         (eshell-mode . corfu-mode)))
+  :hook((prog-mode . corfu-mode)
+	(prog-mode . corfu-popupinfo-mode)
+        (shell-mode . corfu-mode)
+        (eshell-mode . corfu-mode)))
+
+(use-package kind-icon
+  :after corfu
+  :custom
+  (kind-icon-default-face 'corfu-default)
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
 ;; cape
 (use-package cape
+  ;; Available: cape-file cape-dabbrev cape-history cape-keyword
+  ;; cape-tex cape-sgml cape-rfc1345 cape-abbrev cape-ispell
+  ;; cape-dict cape-symbol cape-line
   :defer t
   :init
   ;; Add `completion-at-point-functions', used by `completion-at-point'.
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   (add-to-list 'completion-at-point-functions #'cape-file))
 #+end_src
-** Language Server Protocol
+** Language Server Protocol(~LSP~)
 Code completion with language servers, is done using =Eglot=, which is
 built-in to the emacs.
 #+begin_src elisp
+;; Web Mode
+(use-package web-mode)
+
+;; Astro.js mode
+(define-derived-mode astro-mode web-mode "astro")
+(setq auto-mode-alist
+      (append '((".*\\.astro\\'" . astro-mode))
+	      auto-mode-alist))
+
 ;; eglot
 (use-package eglot
   :ensure nil
@@ -873,5 +912,7 @@ Evil window movements & Personal keybindings, which are good to have.
   "b p"   '(previous-buffer :which-key "Previous buffer")
   ;; files
   "f r" '(recentf :which-key "Recent files")
+  ;; imenu
+  "s i" '(imenu :which-key "Imenu"))
 ;;; init.el ends here
 #+end_src
